@@ -33,7 +33,7 @@ export const signInWithGoogle = async () => {
     const domain = window.location.hostname;
     
     if (error.code === 'auth/unauthorized-domain') {
-      alert(`Domain Unauthorized: The domain "${domain}" is not authorized in your Firebase project. \n\nPlease go to Firebase Console > Authentication > Settings > Authorized Domains and add "${domain}".`);
+      alert(`Domain Unauthorized: The domain "${domain}" is not authorized in your Firebase project. \n\nPlease go to Firebase Console > Authentication > Settings > Authorized Domains and add "${domain}". \n\nYou might also need to open this app in a new tab if you are seeing this inside an iframe.`);
     } else if (error.code === 'auth/popup-blocked') {
       alert("Popup Blocked: Your browser blocked the login popup. Please allow popups for this site to sign in.");
     } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {

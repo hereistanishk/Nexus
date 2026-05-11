@@ -98,10 +98,12 @@ export default function App() {
     try {
       await signInWithGoogle();
     } catch (err: any) {
-      setAuthError(err.code === 'auth/unauthorized-domain' 
-        ? "This domain is not authorized. See console for instructions." 
-        : err.message
-      );
+      if (err.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        setAuthError(`This domain "${domain}" is not authorized. Please add it to your Firebase Console under Authentication > Settings > Authorized Domains.`);
+      } else {
+        setAuthError(err.message);
+      }
     } finally {
       setIsSigningIn(false);
     }
@@ -261,9 +263,23 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium max-w-md"
+            className="mt-6 p-6 bg-red-50 border border-red-100 rounded-[2rem] text-red-600 text-sm font-medium max-w-lg shadow-sm"
           >
-            {authError}
+            <div className="flex flex-col gap-3">
+              <p className="font-black flex items-center gap-2">
+                <span className="bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">!</span>
+                Configuration Required
+              </p>
+              <p className="leading-relaxed opacity-90">{authError}</p>
+              <a 
+                href={`https://console.firebase.google.com/project/gen-lang-client-0519464724/authentication/settings`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-center hover:bg-red-700 transition-colors"
+              >
+                Go to Firebase Console
+              </a>
+            </div>
           </motion.div>
         )}
         <p className="mt-8 text-xs text-gray-400 uppercase tracking-widest font-semibold flex items-center gap-2">
