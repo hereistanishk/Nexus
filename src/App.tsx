@@ -59,6 +59,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingSite, setViewingSite] = useState<Site | null>(null);
@@ -93,10 +94,14 @@ export default function App() {
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
+    setAuthError(null);
     try {
       await signInWithGoogle();
-    } catch (err) {
-      // Errors are handled in the firebase.ts utility
+    } catch (err: any) {
+      setAuthError(err.code === 'auth/unauthorized-domain' 
+        ? "This domain is not authorized. See console for instructions." 
+        : err.message
+      );
     } finally {
       setIsSigningIn(false);
     }
@@ -251,6 +256,16 @@ export default function App() {
           {isSigningIn ? <Loader2 className="animate-spin" size={20} /> : <LogIn size={20} />}
           <span>{isSigningIn ? "Signing in..." : "Sign in with Google"}</span>
         </button>
+
+        {authError && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium max-w-md"
+          >
+            {authError}
+          </motion.div>
+        )}
         <p className="mt-8 text-xs text-gray-400 uppercase tracking-widest font-semibold flex items-center gap-2">
           <ChevronRight size={12} />
           Your dashboard is private and secure
