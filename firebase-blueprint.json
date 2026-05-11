@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "Site": {
+      "title": "Site",
+      "description": "A bookmarked website to be displayed in the portal",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of the site"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The web address of the site"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Optional custom icon URL"
+        },
+        "order": {
+          "type": "number",
+          "description": "Sorting order on the dashboard"
+        },
+        "isFavorite": {
+          "type": "boolean",
+          "description": "Whether the site is marked as favorite"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The unique ID of the user who owns this bookmark"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of creation"
+        }
+      },
+      "required": ["name", "url", "userId", "createdAt"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "User's public resume/portfolio profile",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "headline": { "type": "string" },
+        "email": { "type": "string" },
+        "location": { "type": "string" },
+        "socialLinks": {
+          "type": "object",
+          "properties": {
+            "github": { "type": "string" },
+            "linkedin": { "type": "string" },
+            "website": { "type": "string" }
+          }
+        }
+      }
+    },
+    "PortfolioItem": {
+      "title": "PortfolioItem",
+      "description": "A sample of work or app built by the user",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "url", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}/sites/{siteId}": {
+      "schema": "Site",
+      "description": "User-specific collection of bookmarked sites"
+    },
+    "profiles/{userId}": {
+      "schema": "Profile",
+      "description": "Public profile details for a user"
+    },
+    "users/{userId}/portfolio/{itemId}": {
+      "schema": "PortfolioItem",
+      "description": "A collection of projects built by the user"
+    }
+  }
+}

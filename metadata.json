@@ -1,0 +1,10 @@
+{
+  "name": "WebHome Portal",
+  "description": "Your personal dashboard to launch and manage any website as a custom web application.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": []
+}

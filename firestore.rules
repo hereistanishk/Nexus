@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation helper for Site entity
+    function isValidSite(data) {
+      return data.keys().hasAll(['name', 'url', 'userId', 'createdAt']) &&
+             data.keys().size() <= 8 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.url is string && data.url.size() > 0 && data.url.size() <= 1000 &&
+             data.userId == request.auth.uid &&
+             data.createdAt == request.time &&
+             (!('icon' in data) || (data.icon is string && data.icon.size() <= 1000)) &&
+             (!('order' in data) || (data.order is number)) &&
+             (!('isFavorite' in data) || (data.isFavorite is bool));
+    }
+
+    // Validation helper for Profile entity
+    function isValidProfile(data) {
+      return data.keys().hasAll(['displayName', 'photoURL', 'bio', 'headline', 'email']) &&
+             data.displayName is string && data.displayName.size() <= 200 &&
+             data.photoURL is string && data.photoURL.size() <= 1000 &&
+             data.bio is string && data.bio.size() <= 5000 &&
+             data.headline is string && data.headline.size() <= 200 &&
+             data.email is string && data.email.size() <= 200 &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 200)) &&
+             (!('socialLinks' in data) || (data.socialLinks is map));
+    }
+
+    // Validation helper for PortfolioItem entity
+    function isValidPortfolioItem(data) {
+      return data.keys().hasAll(['title', 'description', 'url', 'createdAt']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 5000 &&
+             data.url is string && data.url.size() <= 1000;
+    }
+
+    // Public profiles
+    match /profiles/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+    }
+
+    // User portfolio collection
+    match /users/{userId}/portfolio/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+    }
+
+    // User sites collection
+    match /users/{userId}/sites/{siteId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(siteId);
+      
+      allow create: if isOwner(userId) && 
+                      isValidId(siteId) && 
+                      isValidSite(incoming());
+      
+      allow update: if isOwner(userId) && 
+                      isValidId(siteId) && 
+                      isValidSite(incoming()) &&
+                      // Action: Generic update
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'url', 'icon', 'order', 'isFavorite', 'updatedAt']) &&
+                      incoming().userId == existing().userId &&
+                      incoming().createdAt == existing().createdAt;
+      
+      allow delete: if isOwner(userId) && isValidId(siteId);
+    }
+  }
+}
