@@ -34,4 +34,20 @@ export interface PortfolioItem {
   createdAt: Timestamp;
 }
 
+export interface StoreApp {
+  id: string;
+  title: string;
+  description: string;
+  developerId: string;
+  developerName: string;
+  iconURL: string;
+  bannerURL?: string;
+  category: 'web' | 'apk' | 'utility' | 'game';
+  downloadURL: string; // For APKs or Web links
+  isAPK: boolean;
+  downloads: number;
+  rating: number;
+  createdAt: Timestamp;
+}
+
 export type NewSite = Omit<Site, 'id' | 'createdAt' | 'userId'>;

@@ -84,6 +84,14 @@
     "users/{userId}/portfolio/{itemId}": {
       "schema": "PortfolioItem",
       "description": "A collection of projects built by the user"
+    },
+    "appStore/{appId}": {
+      "schema": "StoreApp",
+      "description": "Publicly available apps and APKs for users to install"
+    },
+    "defaultApps/{appId}": {
+      "schema": "StoreApp",
+      "description": "Apps that should be pre-installed on every user's dashboard"
     }
   }
 }

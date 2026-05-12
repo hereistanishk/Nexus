@@ -15,6 +15,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "studenttanishk2005@gmail.com";
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -60,22 +64,56 @@ service cloud.firestore {
              data.url is string && data.url.size() <= 1000;
     }
 
+    // Validation helper for StoreApp entity
+    function isValidStoreApp(data) {
+      return data.keys().hasAll(['title', 'description', 'developerId', 'developerName', 'iconURL', 'category', 'downloadURL', 'isAPK', 'downloads', 'rating', 'createdAt']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 5000 &&
+             data.developerId == request.auth.uid &&
+             data.category in ['web', 'apk', 'utility', 'game'] &&
+             data.downloadURL is string &&
+             data.isAPK is bool &&
+             data.downloads is number &&
+             data.rating is number &&
+             data.createdAt == request.time;
+    }
+
+    // Public App Store
+    match /appStore/{appId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidStoreApp(incoming());
+      allow update: if isSignedIn() && (
+        // Allow anyone to increment download count
+        (incoming().diff(existing()).affectedKeys().hasOnly(['downloads']) && incoming().downloads == (existing().get('downloads', 0) + 1)) ||
+        // Owner can update everything else
+        (existing().developerId == request.auth.uid && isValidStoreApp(incoming()))
+      );
+      allow delete: if isSignedIn() && existing().developerId == request.auth.uid;
+    }
+
+    // Default Apps
+    match /defaultApps/{appId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
     // Public profiles
     match /profiles/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
     }
 
     // User portfolio collection
     match /users/{userId}/portfolio/{itemId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
     }
 
     // User sites collection
     match /users/{userId}/sites/{siteId} {
       allow list: if isOwner(userId);
-      allow get: if isOwner(userId) && isValidId(siteId);
+      allow get: if isOwner(userId);
       
       allow create: if isOwner(userId) && 
                       isValidId(siteId) && 
@@ -84,7 +122,6 @@ service cloud.firestore {
       allow update: if isOwner(userId) && 
                       isValidId(siteId) && 
                       isValidSite(incoming()) &&
-                      // Action: Generic update
                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'url', 'icon', 'order', 'isFavorite', 'updatedAt']) &&
                       incoming().userId == existing().userId &&
                       incoming().createdAt == existing().createdAt;

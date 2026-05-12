@@ -10,6 +10,7 @@ import {
   updateDoc,
   serverTimestamp,
   writeBatch,
+  getDocs,
   type Unsubscribe 
 } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
@@ -24,7 +25,10 @@ import {
   Loader2, 
   Star,
   User as UserIcon,
-  Plus
+  Plus,
+  ShoppingBag,
+  Package,
+  ShieldCheck
 } from "lucide-react";
 import { 
   DndContext, 
@@ -45,15 +49,17 @@ import {
   rectSortingStrategy 
 } from "@dnd-kit/sortable";
 
-import { auth, db, signInWithGoogle, signOutUser } from "./firebase";
-import { Site } from "./types";
+import { auth, db, signInWithGoogle, signOutUser, handleFirestoreError, OperationType } from "./firebase";
+import { Site, StoreApp } from "./types";
 import SiteCard from "./components/SiteCard";
 import SiteViewer from "./components/SiteViewer";
 import AddSiteForm from "./components/AddSiteForm";
 import ProfileView from "./components/ProfileView";
+import AppStore from "./components/AppStore";
+import CreatorDashboard from "./components/CreatorDashboard";
 import { cn } from "./lib/utils";
 
-type ViewTab = "dashboard" | "profile";
+type ViewTab = "dashboard" | "store" | "profile" | "creator";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -65,6 +71,8 @@ export default function App() {
   const [viewingSite, setViewingSite] = useState<Site | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>("dashboard");
+
+  const isAdmin = user?.email === "studenttanishk2005@gmail.com";
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -126,7 +134,7 @@ export default function App() {
         })) as Site[];
         setSites(sitesData);
       }, (error) => {
-        console.error("Firestore Listen Error:", error);
+        handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/sites`);
       });
     } else {
       setSites([]);
@@ -136,6 +144,56 @@ export default function App() {
       if (unsubscribe) unsubscribe();
     };
   }, [user]);
+
+  // Handle Default Apps Auto-installation
+  useEffect(() => {
+    if (!user) return;
+
+    const syncDefaultApps = async () => {
+      try {
+        const path = "defaultApps";
+        let defaultAppsSnap;
+        try {
+          defaultAppsSnap = await getDocs(collection(db, path));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.LIST, path);
+          return;
+        }
+
+        const defaultApps = defaultAppsSnap.docs.map(d => ({ id: d.id, ...d.data() }) as StoreApp);
+        
+        for (const app of defaultApps) {
+          // Check if user already has this site installed
+          const alreadyInstalled = sites.some(s => s.url === app.downloadURL);
+          if (!alreadyInstalled) {
+            console.log(`Auto-installing default app: ${app.title}`);
+            const siteData: Omit<Site, "id"> = {
+              name: app.title,
+              url: app.downloadURL,
+              icon: app.iconURL || `https://www.google.com/s2/favicons?domain=${new URL(app.downloadURL).hostname}&sz=64`,
+              userId: user.uid,
+              createdAt: serverTimestamp() as any,
+              order: sites.length,
+              isFavorite: false
+            };
+            
+            const writePath = `users/${user.uid}/sites`;
+            try {
+              await addDoc(collection(db, writePath), siteData);
+            } catch (err) {
+              handleFirestoreError(err, OperationType.CREATE, writePath);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error syncing default apps:", err);
+      }
+    };
+
+    if (user) {
+       syncDefaultApps();
+    }
+  }, [user, sites.length]);
 
   const handleAddSite = async (name: string, url: string) => {
     if (!user) return;
@@ -244,7 +302,7 @@ export default function App() {
           <Globe className="text-white w-12 h-12" />
         </div>
         <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-4">
-          WebHome Portal
+          Nexus
         </h1>
         <p className="text-xl text-gray-500 max-w-md mb-10 leading-relaxed">
           Launch and manage your favorite web sites as a unified workspace.
@@ -300,7 +358,7 @@ export default function App() {
               <Globe className="text-white w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">WebHome</h1>
+              <h1 className="text-lg font-bold text-gray-900">Nexus</h1>
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Portal</p>
             </div>
           </div>
@@ -319,6 +377,16 @@ export default function App() {
                 <span>Dashboard</span>
               </button>
               <button
+                onClick={() => setActiveTab("store")}
+                className={cn(
+                  "flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-black transition-all active:scale-95",
+                  activeTab === "store" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <ShoppingBag size={18} />
+                <span>Store</span>
+              </button>
+              <button
                 onClick={() => setActiveTab("profile")}
                 className={cn(
                   "flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-black transition-all active:scale-95",
@@ -328,6 +396,19 @@ export default function App() {
                 <UserIcon size={18} />
                 <span>Profile</span>
               </button>
+
+              {isAdmin && (
+                <button
+                  onClick={() => setActiveTab("creator")}
+                  className={cn(
+                    "flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-black transition-all active:scale-95",
+                    activeTab === "creator" ? "bg-white text-purple-600 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                  )}
+                >
+                  <ShieldCheck size={18} />
+                  <span>Creator</span>
+                </button>
+              )}
             </div>
 
             <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100">
@@ -428,7 +509,20 @@ export default function App() {
                 </DndContext>
               )}
             </motion.div>
-          ) : (
+          ) : activeTab === "store" ? (
+            <motion.div
+              key="store"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+            >
+              <AppStore user={user} onInstall={(url, name) => {
+                handleAddSite(name, url);
+                setActiveTab("dashboard");
+              }} />
+            </motion.div>
+          ) : activeTab === "profile" ? (
             <motion.div
               key="profile"
               initial={{ opacity: 0, x: 20 }}
@@ -438,7 +532,17 @@ export default function App() {
             >
               <ProfileView user={user} />
             </motion.div>
-          )}
+          ) : activeTab === "creator" ? (
+            <motion.div
+              key="creator"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <CreatorDashboard />
+            </motion.div>
+          ) : null}
         </AnimatePresence>
       </main>
 
@@ -453,7 +557,18 @@ export default function App() {
             )}
           >
             <LayoutGrid size={24} className={cn(activeTab === "dashboard" && "text-blue-600")} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Dashboard</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">Dash</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("store")}
+            className={cn(
+              "flex flex-col items-center gap-1 transition-all",
+              activeTab === "store" ? "text-gray-900" : "text-gray-400"
+            )}
+          >
+            <ShoppingBag size={24} className={cn(activeTab === "store" && "text-blue-600")} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Store</span>
           </button>
           
           <button
@@ -466,6 +581,19 @@ export default function App() {
             <UserIcon size={24} className={cn(activeTab === "profile" && "text-blue-600")} />
             <span className="text-[10px] font-black uppercase tracking-widest">Profile</span>
           </button>
+
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab("creator")}
+              className={cn(
+                "flex flex-col items-center gap-1 transition-all",
+                activeTab === "creator" ? "text-gray-900" : "text-gray-400"
+              )}
+            >
+              <ShieldCheck size={24} className={cn(activeTab === "creator" && "text-purple-600")} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Admin</span>
+            </button>
+          )}
         </div>
       </div>
 
