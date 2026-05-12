@@ -65,7 +65,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<{ message: string, code?: string } | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingSite, setViewingSite] = useState<Site | null>(null);
@@ -108,9 +108,16 @@ export default function App() {
     } catch (err: any) {
       if (err.code === 'auth/unauthorized-domain') {
         const domain = window.location.hostname;
-        setAuthError(`This domain "${domain}" is not authorized. Please add it to your Firebase Console under Authentication > Settings > Authorized Domains.`);
+        setAuthError({ 
+          code: 'auth/unauthorized-domain',
+          message: `This domain "${domain}" is not authorized. Please add it to your Firebase Console under Authentication > Settings > Authorized Domains.` 
+        });
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setAuthError({ message: "Sign-in was cancelled." });
+      } else if (err.code === 'auth/popup-blocked') {
+        setAuthError({ message: "Popup blocked by browser. Please enable popups to sign in." });
       } else {
-        setAuthError(err.message);
+        setAuthError({ message: err.message });
       }
     } finally {
       setIsSigningIn(false);
@@ -298,14 +305,14 @@ export default function App() {
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-24 h-24 bg-gray-900 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-xl">
+        <div className="w-24 h-24 bg-slate-900 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl group-hover:scale-105 transition-all duration-500">
           <Globe className="text-white w-12 h-12" />
         </div>
-        <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-4">
+        <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter mb-4">
           Nexus
         </h1>
-        <p className="text-xl text-gray-500 max-w-md mb-10 leading-relaxed">
-          Launch and manage your favorite web sites as a unified workspace.
+        <p className="text-lg text-slate-500 max-w-md mb-10 leading-relaxed font-medium">
+          The unified workspace for your favorite web tools and cloud applications.
         </p>
         <button
           onClick={handleSignIn}
@@ -324,19 +331,25 @@ export default function App() {
             className="mt-6 p-6 bg-red-50 border border-red-100 rounded-[2rem] text-red-600 text-sm font-medium max-w-lg shadow-sm"
           >
             <div className="flex flex-col gap-3">
-              <p className="font-black flex items-center gap-2">
-                <span className="bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">!</span>
-                Configuration Required
-              </p>
-              <p className="leading-relaxed opacity-90">{authError}</p>
-              <a 
-                href={`https://console.firebase.google.com/project/gen-lang-client-0519464724/authentication/settings`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-center hover:bg-red-700 transition-colors"
-              >
-                Go to Firebase Console
-              </a>
+              {authError.code === 'auth/unauthorized-domain' ? (
+                <>
+                  <p className="font-black flex items-center gap-2">
+                    <span className="bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">!</span>
+                    Configuration Required
+                  </p>
+                  <p className="leading-relaxed opacity-90">{authError.message}</p>
+                  <a 
+                    href={`https://console.firebase.google.com/project/gen-lang-client-0519464724/authentication/settings`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-center hover:bg-red-700 transition-colors"
+                  >
+                    Go to Firebase Console
+                  </a>
+                </>
+              ) : (
+                <p className="leading-relaxed opacity-90 font-bold">{authError.message}</p>
+              )}
             </div>
           </motion.div>
         )}
@@ -354,12 +367,12 @@ export default function App() {
       <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg shadow-slate-100">
               <Globe className="text-white w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Nexus</h1>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Portal</p>
+              <h1 className="text-lg font-black text-slate-900 tracking-tight">Nexus</h1>
+              <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-[0.2em]">Portal</p>
             </div>
           </div>
 
