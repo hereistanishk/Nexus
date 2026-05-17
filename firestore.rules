@@ -34,14 +34,15 @@ service cloud.firestore {
     // Validation helper for Site entity
     function isValidSite(data) {
       return data.keys().hasAll(['name', 'url', 'userId', 'createdAt']) &&
-             data.keys().size() <= 8 &&
+             data.keys().size() <= 9 &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.url is string && data.url.size() > 0 && data.url.size() <= 1000 &&
              data.userId == request.auth.uid &&
              data.createdAt == request.time &&
              (!('icon' in data) || (data.icon is string && data.icon.size() <= 1000)) &&
              (!('order' in data) || (data.order is number)) &&
-             (!('isFavorite' in data) || (data.isFavorite is bool));
+             (!('isFavorite' in data) || (data.isFavorite is bool)) &&
+             (!('isLocked' in data) || (data.isLocked is bool));
     }
 
     // Validation helper for Profile entity
@@ -122,11 +123,11 @@ service cloud.firestore {
       allow update: if isOwner(userId) && 
                       isValidId(siteId) && 
                       isValidSite(incoming()) &&
-                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'url', 'icon', 'order', 'isFavorite', 'updatedAt']) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'url', 'icon', 'order', 'isFavorite', 'isLocked', 'updatedAt']) &&
                       incoming().userId == existing().userId &&
                       incoming().createdAt == existing().createdAt;
       
-      allow delete: if isOwner(userId) && isValidId(siteId);
+      allow delete: if isOwner(userId) && isValidId(siteId) && (!('isLocked' in existing()) || existing().isLocked == false);
     }
   }
 }

@@ -7,6 +7,7 @@ export interface Site {
   icon?: string;
   order: number;
   isFavorite?: boolean;
+  isLocked?: boolean;
   userId: string;
   createdAt: Timestamp;
 }
